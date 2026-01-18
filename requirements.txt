@@ -1,0 +1,16 @@
+PyMuPDF
+Pillow
+torch
+transformers
+Flask
+flask-cors
+flask-bcrypt
+flask-jwt-extended
+python-dotenv
+pymongo
+requests
+cloudinary
+google-genai
+pytesseract
+opencv-python
+numpy

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RagBot Demo 🔥</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+            background: #f4f4f4;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+        input, select, textarea {
+            padding: 8px;
+            width: 100%;
+            margin-top: 8px;
+        }
+        pre {
+            background: #eee;
+            padding: 10px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        #loader {
+            display: none;
+            color: orange;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .chat-box {
+            background: #fafafa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .user {
+            color: #333;
+            margin-bottom: 6px;
+        }
+        .ai {
+            color: green;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>RagBot Demo 🤖</h1>
+
+<!-- Upload -->
+<div class="card">
+    <h3>Step 1: Upload PDF</h3>
+    <input type="file" id="pdfFile">
+    <button onclick="uploadPDF()">Upload</button>
+    <p id="uploadStatus"></p>
+</div>
+
+<!-- Explain -->
+<div class="card">
+    <h3>Step 2: Explain Page</h3>
+    <p>PDF ID: <b><span id="displayPdfId">N/A</span></b></p>
+
+    <input type="number" id="pageNo" value="1" min="1">
+
+    <select id="lang">
+        <option value="hinglish">Hinglish</option>
+        <option value="hindi">Hindi</option>
+        <option value="english">English</option>
+    </select>
+
+    <button id="processBtn" onclick="processPage()" disabled>
+        Get Explanation
+    </button>
+
+    <div id="loader">AI kaam kar raha hai ⏳</div>
+</div>
+
+<!-- Result -->
+<div class="card">
+    <h3>Results</h3>
+
+    <h4>AI Explanation</h4>
+    <div id="explanation">---</div>
+
+    <hr>
+
+    <h4>Raw Parsed Text</h4>
+    <pre id="rawText">---</pre>
+</div>
+
+<!-- Doubt Section -->
+<div class="card">
+    <h3>Step 3: Ask Doubt (Chat)</h3>
+
+    <textarea id="doubtInput" rows="3"
+        placeholder="Page se related doubt yahan likho..."></textarea>
+
+    <button onclick="askDoubt()">Ask Doubt</button>
+
+    <div class="chat-box" id="chatBox"></div>
+</div>
+
+<script>
+let currentPdfId = "";
+
+async function uploadPDF() {
+    const fileInput = document.getElementById("pdfFile");
+    if (!fileInput.files[0]) {
+        alert("PDF select kar bhai");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    document.getElementById("uploadStatus").innerText = "Uploading...";
+
+    const res = await fetch("/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+
+    if (data.pdf_id) {
+        currentPdfId = data.pdf_id;
+        document.getElementById("displayPdfId").innerText = currentPdfId;
+        document.getElementById("uploadStatus").innerText = "Upload successful ✅";
+        document.getElementById("processBtn").disabled = false;
+    } else {
+        alert(data.error || "Upload failed");
+    }
+}
+
+async function processPage() {
+    const pageNo = document.getElementById("pageNo").value;
+    const lang = document.getElementById("lang").value;
+    const loader = document.getElementById("loader");
+
+    loader.style.display = "block";
+
+    try {
+        const res = await fetch("/parse-page", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                pdf_id: currentPdfId,
+                page_no: pageNo,
+                language: lang
+            })
+        });
+
+        const data = await res.json();
+
+        document.getElementById("rawText").innerText =
+            data.text || "No text found";
+
+        document.getElementById("explanation").innerText =
+            data.explanation || "No explanation yet";
+
+        document.getElementById("chatBox").innerHTML = "";
+
+    } catch (err) {
+        alert("Error: " + err.message);
+    } finally {
+        loader.style.display = "none";
+    }
+}
+
+async function askDoubt() {
+    const doubt = document.getElementById("doubtInput").value.trim();
+    const pageNo = document.getElementById("pageNo").value;
+
+    if (!doubt) {
+        alert("Doubt likh bhai");
+        return;
+    }
+
+    const chatBox = document.getElementById("chatBox");
+
+    chatBox.innerHTML += `<div class="user"><b>You:</b> ${doubt}</div>`;
+
+    document.getElementById("doubtInput").value = "";
+
+    const res = await fetch("/ask-doubt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            pdf_id: currentPdfId,
+            page_no: pageNo,
+            query: doubt
+        })
+    });
+
+    const data = await res.json();
+
+    if (data.answer) {
+        chatBox.innerHTML +=
+            `<div class="ai"><b>AI:</b> ${data.answer}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    } else {
+        chatBox.innerHTML +=
+            `<div class="ai">Error: ${data.error}</div>`;
+    }
+}
+</script>
+
+</body>
+</html>

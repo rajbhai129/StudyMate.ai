@@ -1,0 +1,17 @@
+StudyMate.ai - AI-Powered PDF Study Assistant
+
+Developed a comprehensive full-stack web application that transforms traditional PDF reading into an interactive AI-powered learning experience. The platform enables students to upload academic PDFs and receive intelligent, context-aware explanations for each page along with real-time doubt resolution.
+
+TECHNICAL IMPLEMENTATION:
+
+Frontend: Built a responsive single-page application using React.js 19 with Vite build tool and Tailwind CSS for modern UI/UX design. Implemented React Router for navigation, React Markdown for rendering AI-generated content, and Lucide React for iconography. The frontend features a ChatGPT-style chat interface with real-time message rendering and interactive PDF viewer with page-by-page navigation.
+
+Backend: Developed RESTful API server using Flask (Python) with proper CORS configuration and JWT-based authentication system. Implemented secure user registration and login with bcrypt password hashing. Integrated MongoDB Atlas for storing user data, PDF metadata, parsed page content, and conversation history. Designed efficient data models to handle nested page structures and chat history.
+
+PDF PROCESSING PIPELINE: Created an advanced PDF parsing system using PyMuPDF for text extraction and page rendering. Integrated Tesseract OCR for extracting text from images and diagrams within PDFs. Implemented BLIP (Bootstrapping Language-Image Pre-training) model using PyTorch and Hugging Face Transformers for intelligent image captioning when OCR fails. The pipeline processes PDFs page-by-page, extracting both text and visual content, then combines them into structured formats for AI processing.
+
+AI INTEGRATION: Integrated Google Gemini 2.5 Flash API for generating contextual page explanations in multiple languages (English, Hindi, Hinglish). Designed intelligent prompt engineering to ensure explanations are simple, use real-world examples, and follow markdown formatting. Implemented context-aware doubt resolution system that maintains conversation history and page context for accurate answers. Built quiz generation feature that creates multiple-choice questions from selected pages with correct answers and explanations.
+
+INFRASTRUCTURE: Utilized Cloudinary for secure PDF file storage and retrieval. Implemented proper error handling, async operations, and temporary file management for PDF processing. Designed scalable architecture that handles concurrent users and large document processing efficiently.
+
+The application successfully processes complex academic documents, extracts both textual and visual information, and provides personalized learning assistance through AI-powered explanations and interactive features, making it an effective study companion for students.

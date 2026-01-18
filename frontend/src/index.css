@@ -1,0 +1,275 @@
+/* :root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+} */
+ @tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Markdown styles - Optimized for reading comfort */
+.markdown-content {
+  color: #D1D5DB !important; /* Soft light gray for easy reading */
+  line-height: 1.75 !important; /* Increased line height for better readability */
+  font-size: 15px !important; /* Comfortable font size */
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: #ECECF1 !important; /* ChatGPT-like heading color */
+  letter-spacing: -0.01em;
+}
+
+.markdown-content h2 {
+  font-size: 1.35rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.2rem;
+}
+
+.markdown-content h4 {
+  font-size: 1.1rem;
+}
+
+.markdown-content p {
+  margin-bottom: 0.875rem;
+  color: #D1D5DB !important; /* Comfortable text color */
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-left: 1.5rem;
+  margin-bottom: 0.875rem;
+  list-style-type: disc;
+  color: #D1D5DB !important;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5rem;
+  color: #D1D5DB !important;
+  line-height: 1.7;
+}
+
+.markdown-content strong {
+  font-weight: 600;
+  color: #ECECF1 !important; /* Slightly brighter for emphasis */
+}
+
+.markdown-content code {
+  background: #1F2937 !important; /* Darker background for code */
+  color: #F9FAFB !important; /* Light text for code */
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.markdown-content pre {
+  background-color: #1F2937 !important; /* Dark code block background */
+  color: #F9FAFB !important;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border: 1px solid #374151;
+}
+
+.markdown-content pre code {
+  background-color: transparent !important;
+  padding: 0;
+  color: #F9FAFB !important;
+}
+
+/* Chat bubble styles (plain CSS so it ALWAYS applies) */
+.study-theme {
+  background: #0f172a; /* main */
+  color: #e5e7eb; /* primary text */
+}
+
+.study-theme .study-navbar {
+  background: rgba(15, 23, 42, 0.92); /* #0F172A */
+  border-bottom: 1px solid #334155;
+}
+
+.study-theme .study-panel {
+  background: #111827; /* secondary */
+  border: 1px solid #334155;
+}
+
+/* Explanation content area - optimized for reading */
+.study-theme .study-panel .markdown-content {
+  background: transparent;
+  color: #D1D5DB !important;
+}
+
+/* Special styling for explanation panel */
+.study-explanation-panel {
+  background: #1F2937 !important; /* Darker, more comfortable background */
+  border: 1px solid #374151 !important;
+}
+
+.study-theme .study-card {
+  background: #1e293b; /* card/panel */
+  border: 1px solid #334155;
+}
+
+.study-theme .study-divider {
+  border-color: #334155;
+}
+
+.study-theme .study-text-secondary {
+  color: #9ca3af;
+}
+
+.study-theme .study-text-muted {
+  color: #6b7280;
+}
+
+.study-theme .study-accent {
+  color: #38bdf8;
+}
+
+.study-theme .study-btn {
+  background: #38bdf8;
+  color: #0f172a;
+}
+
+.study-theme .study-btn:hover {
+  background: #0ea5e9;
+}
+
+/* ChatGPT-like chat message styles for eye comfort */
+.study-ai-message {
+  background: #343541 !important; /* ChatGPT AI message background */
+  color: #D1D5DB !important; /* Soft, comfortable text color */
+  border: none !important;
+  line-height: 1.75 !important; /* Increased line height for readability */
+  font-size: 15px !important; /* Comfortable reading size */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+}
+
+.study-ai-message .markdown-content {
+  color: #D1D5DB !important;
+}
+
+.study-ai-message .markdown-content p {
+  color: #D1D5DB !important;
+  margin-bottom: 0.875rem;
+}
+
+.study-ai-message .markdown-content strong {
+  color: #ECECF1 !important;
+}
+
+.study-user-message {
+  background: #10A37F !important; /* ChatGPT-like user message green */
+  color: #FFFFFF !important; /* Pure white for contrast */
+  border: none !important;
+  line-height: 1.75 !important;
+  font-size: 15px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  font-weight: 400;
+}
+
+/* Scrollbar styling for better aesthetics */
+.study-theme ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.study-theme ::-webkit-scrollbar-track {
+  background: #1F2937;
+  border-radius: 4px;
+}
+
+.study-theme ::-webkit-scrollbar-thumb {
+  background: #4B5563;
+  border-radius: 4px;
+}
+
+.study-theme ::-webkit-scrollbar-thumb:hover {
+  background: #6B7280;
+}
+
+/* Better spacing for chat messages */
+.study-ai-message,
+.study-user-message {
+  padding: 16px 20px !important;
+  margin-bottom: 4px;
+}
+
+
+
