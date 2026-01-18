@@ -45,7 +45,7 @@ Before you begin, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/StudyMate.ai.git
+git clone https://github.com/rajbhai129/StudyMate.ai.git
 cd StudyMate.ai
 ```
 
