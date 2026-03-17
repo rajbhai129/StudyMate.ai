@@ -14,3 +14,4 @@ google-genai
 pytesseract
 opencv-python
 numpy
+gunicorn
