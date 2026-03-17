@@ -1,7 +1,7 @@
 import os
 import fitz  # PyMuPDF
 from PIL import Image
-import torch
+
 import pytesseract
 import cv2
 import numpy as np
