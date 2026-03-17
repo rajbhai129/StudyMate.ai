@@ -6,7 +6,10 @@ try:
     import pytesseract
 except:
     pytesseract = None
-import cv2
+try:
+    import cv2
+except:
+    cv2 = None
 import numpy as np
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
@@ -98,6 +101,9 @@ class PDFParser:
             image = Image.open(img_path).convert("RGB")
             
             # OCR
+            if not pytesseract or not cv2:
+                results[key] = "(OCR not available)"
+                continue
             gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
             ocr_text = pytesseract.image_to_string(gray, config="--psm 6").strip()
 
