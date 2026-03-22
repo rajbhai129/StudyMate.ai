@@ -19,7 +19,7 @@ from google import genai
 from pdf_pipeline.parser import PDFParser
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager
-
+from bson.errors import InvalidId
 # --------------------------------------------------
 # Load ENV
 # --------------------------------------------------
@@ -153,7 +153,12 @@ def parse_page():
             return jsonify({"error": "Invalid page number"}), 400
         
         # Check PDF
-        pdf_entry = db.pdfs.find_one({"_id": ObjectId(pdf_id)})
+        try:
+            pdf_id_obj = ObjectId(pdf_id)
+        except InvalidId:
+            return jsonify({"error": "Invalid PDF ID"}), 400
+
+        pdf_entry = db.pdfs.find_one({"_id": pdf_id_obj})
         if not pdf_entry:
             return jsonify({"error": "PDF not found"}), 404
         # Already parsed?
@@ -168,11 +173,16 @@ def parse_page():
         # Download PDF with unique temp file
         temp_dir = tempfile.gettempdir()
         temp_path = os.path.join(temp_dir, f"{uuid.uuid4()}.pdf")
-        r = requests.get(pdf_entry["pdfUrl"])
-        with open(temp_path, "wb") as f:
-            f.write(r.content)
-        # Parse Page
-        page_text = pdf_parser.process_single_page(temp_path, page_no)
+        try:
+            r = requests.get(pdf_entry["pdfUrl"], timeout=15)
+            with open(temp_path, "wb") as f:
+                f.write(r.content)
+
+            page_text = pdf_parser.process_single_page(temp_path, page_no)
+
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
         # Gemini Prompt
         prompt = build_student_prompt(page_text, language)
         # Gemini Call
@@ -233,7 +243,12 @@ Answer clearly like a teacher.
 @app.route("/pdf/<pdf_id>", methods=["GET"])
 def get_pdf_info(pdf_id):
     try:
-        pdf_entry = db.pdfs.find_one({"_id": ObjectId(pdf_id)})
+        try:
+            pdf_id_obj = ObjectId(pdf_id)
+        except InvalidId:
+            return jsonify({"error": "Invalid PDF ID"}), 400
+
+        pdf_entry = db.pdfs.find_one({"_id": pdf_id_obj})
         if not pdf_entry:
             return jsonify({"error": "PDF not found"}), 404
         
@@ -266,7 +281,12 @@ def get_pdf_info(pdf_id):
 @app.route("/pdf/<pdf_id>/page/<int:page_no>/image", methods=["GET"])
 def get_pdf_page_image(pdf_id, page_no):
     try:
-        pdf_entry = db.pdfs.find_one({"_id": ObjectId(pdf_id)})
+        try:
+           pdf_id_obj = ObjectId(pdf_id)
+        except InvalidId:
+           return jsonify({"error": "Invalid PDF ID"}), 400
+
+        pdf_entry = db.pdfs.find_one({"_id": pdf_id_obj})
         if not pdf_entry:
             return jsonify({"error": "PDF not found"}), 404
         

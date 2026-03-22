@@ -1,49 +1,78 @@
 import os
 import fitz  # PyMuPDF
 from PIL import Image
-
+import numpy as np
+import torch
+IMAGE_DIR = "/tmp/images" if os.environ.get("RENDER") else "images"
+# Optional imports
 try:
     import pytesseract
 except:
     pytesseract = None
+
 try:
     import cv2
 except:
     cv2 = None
-import numpy as np
+
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
-# 🔹 Set Tesseract path
-if pytesseract:
+# ======================================================
+# 🔹 Setup Device (GPU if available)
+# ======================================================
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+MODEL_CACHE = "/tmp" if os.environ.get("RENDER") else None
+# ======================================================
+# 🔹 Load BLIP Model Globally (IMPORTANT for performance)
+# ======================================================
+print("🔄 Loading BLIP model...")
+processor = BlipProcessor.from_pretrained(
+    "Salesforce/blip-image-captioning-base",
+    cache_dir=MODEL_CACHE
+)
+model = BlipForConditionalGeneration.from_pretrained(
+    "Salesforce/blip-image-captioning-base",
+    cache_dir=MODEL_CACHE
+)
+model.to(DEVICE)
+model.eval()
+
+print("✅ BLIP loaded on", DEVICE)
+
+# ======================================================
+# 🔹 Set Tesseract path (Windows only)
+# ======================================================
+if pytesseract and os.name == "nt":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
 
 class PDFParser:
     def __init__(self, max_chunk_chars=1000):
         self.max_chunk_chars = max_chunk_chars
-        # BLIP (load once)
-        self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.model.eval()
 
     # ======================================================
-    # NEW FUNCTION: Sirf ek page parse karne ke liye
+    # 🔹 Process Single Page
     # ======================================================
     def process_single_page(self, pdf_path, page_no):
-        doc = fitz.open(pdf_path)
-        # Check ki page number valid hai ya nahi
+        try:
+            doc = fitz.open(pdf_path)
+        except Exception as e:
+            return f"Error opening PDF: {str(e)}"
+
         if page_no > len(doc) or page_no < 1:
             return "Invalid Page Number"
 
-        page = doc[page_no - 1] # Index 0 se shuru hota hai
-        os.makedirs("images", exist_ok=True)
+        page = doc[page_no - 1]
+        
+        os.makedirs(IMAGE_DIR, exist_ok=True)
 
-        # 1. Page se text aur image placeholders nikalo
+        # Extract content
         raw_text, page_image_data = self.extract_page_content(page, page_no, doc)
 
-        # 2. Images ka OCR aur BLIP description nikalo
+        # Process images
         image_results = self.process_images_for_page(page_image_data)
 
-        # 3. Text mein [IMAGE_X] ki jagah description daalo
+        # Replace placeholders
         final_text = raw_text
         for key, result in image_results.items():
             final_text = final_text.replace(f"[IMAGE_{key}]", result)
@@ -51,7 +80,7 @@ class PDFParser:
         return final_text.strip()
 
     # ======================================================
-    # HELPER 1: Ek single page ka raw content nikalna
+    # 🔹 Extract Page Content
     # ======================================================
     def extract_page_content(self, page, page_no, doc):
         blocks = page.get_text("dict")["blocks"]
@@ -60,64 +89,101 @@ class PDFParser:
         page_image_data = {}
 
         for block in blocks:
-            if block.get("type") == 0: # Text
+            # TEXT BLOCK
+            if block.get("type") == 0:
                 for line in block.get("lines", []):
                     for span in line.get("spans", []):
                         page_text += span.get("text", "") + " "
-            
-            elif block.get("type") == 1: # Image
+
+            # IMAGE BLOCK
+            elif block.get("type") == 1:
                 img_counter += 1
                 img_name = f"page{page_no}_img{img_counter}"
-                
-                # Image extraction logic (Tera purana wala hi hai)
+
                 image_bytes = None
+                ext = "png"
+
+                # Try xref extraction
                 if "xref" in block:
                     try:
                         base_image = doc.extract_image(block["xref"])
                         image_bytes = base_image["image"]
                         ext = base_image["ext"]
-                    except: pass
-                
+                    except:
+                        pass
+
+                # Fallback
                 if image_bytes is None and "image" in block:
                     image_bytes = block["image"]
                     ext = block.get("ext", "png")
 
+                # Save image
                 if image_bytes:
-                    img_path = f"images/{img_name}.{ext}"
-                    with open(img_path, "wb") as f:
-                        f.write(image_bytes)
-                    
-                    page_text += f" [IMAGE_{img_name.upper()}] "
-                    page_image_data[img_name.upper()] = img_path
+                    img_path = f"{IMAGE_DIR}/{img_name}.{ext}"
+                    try:
+                        with open(img_path, "wb") as f:
+                            f.write(image_bytes)
+
+                        page_text += f" [IMAGE_{img_name}] "
+                        page_image_data[img_name] = img_path
+
+                    except Exception as e:
+                        print(f"Error saving image: {e}")
 
         return page_text, page_image_data
 
     # ======================================================
-    # HELPER 2: Sirf us page ki images ko AI se process karna
+    # 🔹 Process Images (OCR + BLIP)
     # ======================================================
     def process_images_for_page(self, page_image_data):
         results = {}
-        for key, img_path in page_image_data.items():
-            image = Image.open(img_path).convert("RGB")
-            
-            # OCR
-            if not pytesseract or not cv2:
-                results[key] = "(OCR not available)"
-                continue
-            gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
-            ocr_text = pytesseract.image_to_string(gray, config="--psm 6").strip()
 
-            if len(ocr_text) > 8:
-                results[key] = f"(Equation/Text in Image: {ocr_text})"
+        for key, img_path in page_image_data.items():
+            try:
+                image = Image.open(img_path).convert("RGB")
+            except Exception as e:
+                results[key] = f"(Image load error: {str(e)})"
+                continue
+
+            # =========================
+            # OCR PART
+            # =========================
+            ocr_text = ""
+
+            if pytesseract and cv2:
+                try:
+                    gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
+                    ocr_text = pytesseract.image_to_string(gray, config="--psm 6").strip()
+                except Exception as e:
+                    print(f"OCR Error: {e}")
+
+            # =========================
+            # Decision: OCR vs Caption
+            # =========================
+            if ocr_text and len(ocr_text.strip()) > 15:
+                results[key] = f"(Text in Image: {ocr_text})"
             else:
-                # BLIP Fallback
-                inputs = self.processor(images=image, return_tensors="pt")
-                with torch.no_grad():
-                    output = self.model.generate(**inputs)
-                caption = self.processor.decode(output[0], skip_special_tokens=True)
-                results[key] = f"(Image Description: {caption})"
-            
-            # Cleanup: Kaam hone ke baad image delete kar sakte ho storage bachane ke liye
-            # os.remove(img_path) 
-            
+                # =========================
+                # BLIP Captioning
+                # =========================
+                try:
+                    inputs = processor(images=image, return_tensors="pt").to(DEVICE)
+
+                    with torch.no_grad():
+                        output = model.generate(**inputs, max_new_tokens=30)
+
+                    caption = processor.decode(output[0], skip_special_tokens=True)
+                    results[key] = f"(Image Description: {caption})"
+
+                except Exception as e:
+                    results[key] = f"(Caption error: {str(e)})"
+
+            # =========================
+            # Cleanup (important)
+            # =========================
+            try:
+                os.remove(img_path)
+            except:
+                pass
+
         return results
