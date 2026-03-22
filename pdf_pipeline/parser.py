@@ -11,7 +11,7 @@ try:
 except:
     cv2 = None
 import numpy as np
-# from transformers import BlipProcessor, BlipForConditionalGeneration
+from transformers import BlipProcessor, BlipForConditionalGeneration
 
 # 🔹 Set Tesseract path
 if pytesseract:
