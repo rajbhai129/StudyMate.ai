@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BrainCircuit, Upload as UploadIcon, ArrowLeft, Loader } from "lucide-react";
-import { uploadPDF } from "../services/api";
+import ThemeToggle from "../components/ThemeToggle";
 import { API_BASE_URL } from "../config/api";
 
 export default function Upload() {
@@ -35,16 +35,17 @@ export default function Upload() {
     try {
       const formData = new FormData();
       formData.append("file", file);
+      const token = localStorage.getItem("userToken");
 
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
         body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
       const data = await response.json();
 
       if (response.ok && data.pdf_id) {
-        // Store language preference in session
         sessionStorage.setItem("explanationLanguage", language);
         navigate(`/study/${data.pdf_id}`);
       } else {
@@ -59,53 +60,50 @@ export default function Upload() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      {/* Background */}
-      <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse"></div>
-      <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-sky-600/10 blur-[100px] rounded-full"></div>
+    <div className="min-h-screen bg-background text-foreground p-6 relative overflow-hidden">
+      <div className="absolute bottom-[-20%] left-[-10%] w-[55%] h-[55%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
+      <div className="absolute top-[-10%] right-[-5%] w-[45%] h-[45%] bg-sky-600/10 blur-[110px] rounded-full" />
 
-      <div className="w-full max-w-2xl relative z-10">
-        {/* Header */}
-        <div className="mb-12">
+      <div className="max-w-2xl mx-auto relative z-10">
+        <div className="flex items-center justify-between mb-10">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-2 text-slate-400 hover:text-sky-400 transition-colors mb-8"
+            className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
           >
             <ArrowLeft size={20} /> Back to Home
           </button>
-
-          <div className="text-center">
-            <div className="inline-flex items-center gap-3 group mb-6">
-              <div className="bg-gradient-to-br from-sky-400 to-blue-600 p-2 rounded-xl">
-                <BrainCircuit className="text-white w-6 h-6" />
-              </div>
-              <span className="text-2xl font-black text-white">
-                StudyMate<span className="text-sky-500">.ai</span>
-              </span>
-            </div>
-            <h1 className="text-4xl font-black mb-2">Upload Your PDF</h1>
-            <p className="text-slate-400">
-              Share your book, notes, or research paper. AI will break it down for you.
-            </p>
-          </div>
+          <ThemeToggle />
         </div>
 
-        {/* Upload Card */}
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-slate-800 rounded-[3rem] p-12 shadow-2xl">
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-3 group mb-6">
+            <div className="bg-gradient-to-br from-primary to-sky-600 p-2 rounded-xl">
+              <BrainCircuit className="text-primary-foreground w-6 h-6" />
+            </div>
+            <span className="text-2xl font-black">
+              StudyMate<span className="text-primary">.ai</span>
+            </span>
+          </div>
+          <h1 className="text-4xl font-black mb-2">Upload Your PDF</h1>
+          <p className="text-muted-foreground">
+            Share your book, notes, or research paper. AI will break it down for you.
+          </p>
+        </div>
+
+        <div className="sm-card p-12">
           <form onSubmit={handleUpload} className="space-y-8">
-            {/* File Upload Area */}
             <div
-              className="border-2 border-dashed border-slate-700 rounded-2xl p-12 text-center hover:border-sky-500 transition-colors cursor-pointer"
+              className="border-2 border-dashed border-border rounded-2xl p-12 text-center hover:border-primary transition-colors cursor-pointer bg-card/40"
               onDragOver={(e) => {
                 e.preventDefault();
-                e.currentTarget.classList.add("border-sky-500");
+                e.currentTarget.classList.add("border-primary");
               }}
               onDragLeave={(e) => {
-                e.currentTarget.classList.remove("border-sky-500");
+                e.currentTarget.classList.remove("border-primary");
               }}
               onDrop={(e) => {
                 e.preventDefault();
-                e.currentTarget.classList.remove("border-sky-500");
+                e.currentTarget.classList.remove("border-primary");
                 const droppedFile = e.dataTransfer.files[0];
                 if (droppedFile && droppedFile.type === "application/pdf") {
                   setFile(droppedFile);
@@ -122,26 +120,25 @@ export default function Upload() {
                 disabled={isLoading}
               />
               <label htmlFor="pdfInput" className="cursor-pointer">
-                <UploadIcon className="w-16 h-16 mx-auto mb-4 text-sky-400" />
+                <UploadIcon className="w-16 h-16 mx-auto mb-4 text-primary" />
                 <p className="text-lg font-bold mb-2">
                   {file ? file.name : "Drop your PDF here"}
                 </p>
-                <p className="text-slate-500 text-sm">
+                <p className="text-muted-foreground text-sm">
                   or click to browse from your computer
                 </p>
               </label>
             </div>
 
-            {/* File Info */}
             {file && (
-              <div className="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 flex items-center justify-between">
+              <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-sky-500/20 rounded-lg flex items-center justify-center">
-                    <UploadIcon className="text-sky-400" size={24} />
+                  <div className="w-12 h-12 bg-primary/15 rounded-lg flex items-center justify-center">
+                    <UploadIcon className="text-primary" size={24} />
                   </div>
                   <div>
-                    <p className="font-bold text-sky-300">{file.name}</p>
-                    <p className="text-sm text-slate-400">
+                    <p className="font-bold">{file.name}</p>
+                    <p className="text-sm text-muted-foreground">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
                   </div>
@@ -149,23 +146,23 @@ export default function Upload() {
                 <button
                   type="button"
                   onClick={() => setFile(null)}
-                  className="text-slate-500 hover:text-red-400 transition-colors"
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                  aria-label="Remove selected file"
                 >
-                  ✕
+                  ×
                 </button>
               </div>
             )}
 
-            {/* Language Selection */}
             <div className="space-y-3">
-              <label className="text-sm font-bold text-slate-400 block">
+              <label className="text-sm font-bold text-muted-foreground block">
                 Explanation Language
               </label>
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
                 disabled={isLoading}
-                className="w-full bg-slate-950/50 border border-slate-800 rounded-xl py-3 px-4 text-white focus:border-sky-500 outline-none transition-all"
+                className="sm-input bg-card/40"
               >
                 <option value="hinglish">Hinglish (Hindi + English)</option>
                 <option value="hindi">Hindi</option>
@@ -173,18 +170,16 @@ export default function Upload() {
               </select>
             </div>
 
-            {/* Error Message */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 text-destructive text-sm">
                 {error}
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={!file || isLoading}
-              className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-600 text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-sky-500/20"
+              className="sm-btn w-full py-4 shadow-sm shadow-primary/10"
             >
               {isLoading ? (
                 <>
@@ -199,7 +194,7 @@ export default function Upload() {
             </button>
           </form>
 
-          <p className="text-center text-slate-500 text-xs mt-8 font-medium">
+          <p className="text-center text-muted-foreground text-xs mt-8 font-medium">
             Your PDFs are processed securely. No data is stored permanently.
           </p>
         </div>

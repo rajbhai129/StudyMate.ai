@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BrainCircuit, User, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import ThemeToggle from "../components/ThemeToggle";
 import { registerUser } from "../services/api";
 
 export default function Register() {
@@ -17,12 +18,9 @@ export default function Register() {
 
     try {
       const response = await registerUser(formData);
-      
-      // FIX: Parse JSON response
       const data = await response.json();
-      
+
       if (response.ok) {
-        // Registration successful - redirect to login
         navigate("/login", { state: { email: formData.email } });
       } else {
         setError(data.error || "Registration failed");
@@ -36,73 +34,104 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-slate-200 flex items-center justify-center p-6 relative overflow-hidden font-sans">
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse"></div>
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
 
       <div className="w-full max-w-[450px] relative z-10">
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 relative">
+          <div className="absolute right-0 top-0">
+            <ThemeToggle />
+          </div>
+
           <Link to="/" className="inline-flex items-center gap-3 group">
-            <div className="bg-gradient-to-br from-sky-400 to-blue-600 p-2 rounded-xl">
-              <BrainCircuit className="text-white w-7 h-7" />
+            <div className="bg-gradient-to-br from-primary to-sky-600 p-2 rounded-xl">
+              <BrainCircuit className="text-primary-foreground w-7 h-7" />
             </div>
-            <span className="text-2xl font-black text-white">StudyMate<span className="text-sky-500">.ai</span></span>
+            <span className="text-2xl font-black">
+              StudyMate<span className="text-primary">.ai</span>
+            </span>
           </Link>
           <h2 className="text-2xl font-bold mt-6">Create Account</h2>
-          <p className="text-slate-500 text-sm mt-1">Start your AI-powered study session today.</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            Start your AI-powered study session today.
+          </p>
         </div>
 
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-slate-800 p-10 rounded-[3rem] shadow-2xl">
+        <div className="sm-card p-10">
           {error && (
-            <div className="mb-6 flex items-center gap-3 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl">
-              <AlertCircle size={20} className="text-red-400" />
-              <p className="text-red-400 text-sm font-medium">{error}</p>
+            <div className="mb-6 flex items-center gap-3 bg-destructive/10 border border-destructive/20 p-4 rounded-2xl">
+              <AlertCircle size={20} className="text-destructive" />
+              <p className="text-destructive text-sm font-medium">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleRegister} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-widest font-bold text-slate-500 ml-1">Full Name</label>
+              <label className="text-xs uppercase tracking-widest font-bold text-muted-foreground ml-1">
+                Full Name
+              </label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
-                  type="text" required placeholder="Rajkumar Singh"
-                  className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-sky-500 outline-none transition-all"
+                  type="text"
+                  required
+                  placeholder="Rajkumar Singh"
+                  className="sm-input py-4 pl-12 pr-4"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   disabled={isLoading}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-widest font-bold text-slate-500 ml-1">Email Address</label>
+              <label className="text-xs uppercase tracking-widest font-bold text-muted-foreground ml-1">
+                Email Address
+              </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
-                  type="email" required placeholder="raj@example.com"
-                  className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-sky-500 outline-none transition-all"
+                  type="email"
+                  required
+                  placeholder="raj@example.com"
+                  className="sm-input py-4 pl-12 pr-4"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
+                  }
                   disabled={isLoading}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs uppercase tracking-widest font-bold text-slate-500 ml-1">Password</label>
+              <label className="text-xs uppercase tracking-widest font-bold text-muted-foreground ml-1">
+                Password
+              </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
-                  type={showPassword ? "text" : "password"} required placeholder="••••••••"
-                  className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-12 text-white focus:border-sky-500 outline-none transition-all"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  className="sm-input py-4 pl-12 pr-12"
                   value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
+                  }
                   disabled={isLoading}
                 />
-                <button 
-                  type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-sky-500"
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
                   disabled={isLoading}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -110,18 +139,27 @@ export default function Register() {
             </div>
 
             <button
-              disabled={isLoading} type="submit"
-              className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-600 text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-lg shadow-sky-500/20"
+              disabled={isLoading}
+              type="submit"
+              className="sm-btn w-full py-4 shadow-sm shadow-primary/10"
             >
-              {isLoading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Create Account"}
+              {isLoading ? (
+                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                "Create Account"
+              )}
             </button>
           </form>
 
-          <p className="text-center mt-8 text-slate-500 text-sm font-medium">
-            Already have an account? <Link to="/login" className="text-sky-500 font-bold hover:underline">Sign In</Link>
+          <p className="text-center mt-8 text-muted-foreground text-sm font-medium">
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary font-bold hover:underline">
+              Sign In
+            </Link>
           </p>
         </div>
       </div>
     </div>
   );
 }
+
