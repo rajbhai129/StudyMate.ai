@@ -1,90 +1,153 @@
-/* :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-} */
- @tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Markdown styles - Optimized for reading comfort */
+@layer base {
+  :root {
+    color-scheme: light;
+
+    /* Core surfaces */
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* UI */
+    --primary: 199 89% 48%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 199 89% 48%;
+
+    /* Study/chat tuned for long sessions */
+    --study-panel: 0 0% 100%;
+    --study-panel-muted: 210 40% 96%;
+
+    --chat-ai: 0 0% 100%;
+    --chat-ai-foreground: 222 47% 11%;
+    --chat-user: 199 89% 48%;
+    --chat-user-foreground: 0 0% 100%;
+    --chat-input: 0 0% 100%;
+    --chat-input-foreground: 222 47% 11%;
+    --chat-input-border: 214 32% 91%;
+
+    --code-bg: 210 40% 96%;
+    --code-border: 214 32% 91%;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --background: 222 47% 7%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 199 89% 55%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 21%;
+    --input: 217 33% 21%;
+    --ring: 199 89% 55%;
+
+    --study-panel: 222 47% 11%;
+    --study-panel-muted: 217 33% 17%;
+
+    --chat-ai: 222 47% 16%;
+    --chat-ai-foreground: 210 40% 96%;
+    --chat-user: 199 89% 55%;
+    --chat-user-foreground: 0 0% 100%;
+    --chat-input: 222 47% 16%;
+    --chat-input-foreground: 210 40% 96%;
+    --chat-input-border: 217 33% 21%;
+
+    --code-bg: 222 47% 16%;
+    --code-border: 217 33% 21%;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-height: 100vh;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+      Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.22);
+  }
+}
+
+@layer components {
+  .sm-card {
+    @apply rounded-3xl border border-border bg-card/70 shadow-sm backdrop-blur-xl;
+  }
+
+  .sm-input {
+    @apply w-full rounded-2xl border border-input bg-background/70 px-4 py-3 text-sm text-foreground outline-none transition focus:ring-2 focus:ring-ring/30;
+  }
+
+  .sm-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition hover:opacity-95 active:scale-[0.99] disabled:opacity-50;
+  }
+
+  .sm-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-card/50 px-4 py-3 text-sm font-bold text-foreground transition hover:bg-card/80 active:scale-[0.99] disabled:opacity-50;
+  }
+}
+
+/* Markdown styles tuned for study comfort (works in both themes) */
 .markdown-content {
-  color: #D1D5DB !important; /* Soft light gray for easy reading */
-  line-height: 1.75 !important; /* Increased line height for better readability */
-  font-size: 15px !important; /* Comfortable font size */
+  color: hsl(var(--foreground) / 0.92) !important;
+  line-height: 1.75 !important;
+  font-size: 15px !important;
 }
 
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3,
 .markdown-content h4 {
-  font-weight: 600;
+  font-weight: 700;
   margin-top: 1.25rem;
   margin-bottom: 0.75rem;
-  color: #ECECF1 !important; /* ChatGPT-like heading color */
+  color: hsl(var(--foreground)) !important;
   letter-spacing: -0.01em;
 }
 
@@ -102,15 +165,24 @@ button:focus-visible {
 
 .markdown-content p {
   margin-bottom: 0.875rem;
-  color: #D1D5DB !important; /* Comfortable text color */
+  color: hsl(var(--foreground) / 0.9) !important;
+}
+
+.markdown-content a {
+  color: hsl(var(--primary)) !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .markdown-content ul,
 .markdown-content ol {
   margin-left: 1.5rem;
   margin-bottom: 0.875rem;
+  color: hsl(var(--foreground) / 0.9) !important;
+}
+
+.markdown-content ul {
   list-style-type: disc;
-  color: #D1D5DB !important;
 }
 
 .markdown-content ol {
@@ -119,157 +191,124 @@ button:focus-visible {
 
 .markdown-content li {
   margin-bottom: 0.5rem;
-  color: #D1D5DB !important;
   line-height: 1.7;
 }
 
 .markdown-content strong {
-  font-weight: 600;
-  color: #ECECF1 !important; /* Slightly brighter for emphasis */
+  font-weight: 700;
 }
 
 .markdown-content code {
-  background: #1F2937 !important; /* Darker background for code */
-  color: #F9FAFB !important; /* Light text for code */
-  padding: 3px 8px;
-  border-radius: 4px;
+  background: hsl(var(--code-bg)) !important;
+  border: 1px solid hsl(var(--code-border)) !important;
+  color: hsl(var(--foreground)) !important;
+  padding: 2px 6px;
+  border-radius: 6px;
   font-size: 13.5px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
 }
 
 .markdown-content pre {
-  background-color: #1F2937 !important; /* Dark code block background */
-  color: #F9FAFB !important;
+  background-color: hsl(var(--code-bg)) !important;
+  border: 1px solid hsl(var(--code-border)) !important;
+  color: hsl(var(--foreground)) !important;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow-x: auto;
   margin-bottom: 1rem;
-  border: 1px solid #374151;
 }
 
 .markdown-content pre code {
   background-color: transparent !important;
+  border: none !important;
   padding: 0;
-  color: #F9FAFB !important;
 }
 
-/* Chat bubble styles (plain CSS so it ALWAYS applies) */
+/* Study view (keeps existing class names but becomes theme-aware) */
 .study-theme {
-  background: #0f172a; /* main */
-  color: #e5e7eb; /* primary text */
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .study-theme .study-navbar {
-  background: rgba(15, 23, 42, 0.92); /* #0F172A */
-  border-bottom: 1px solid #334155;
+  background: hsl(var(--background) / 0.82);
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .study-theme .study-panel {
-  background: #111827; /* secondary */
-  border: 1px solid #334155;
+  background: hsl(var(--study-panel));
+  border: 1px solid hsl(var(--border));
 }
 
-/* Explanation content area - optimized for reading */
-.study-theme .study-panel .markdown-content {
-  background: transparent;
-  color: #D1D5DB !important;
-}
-
-/* Special styling for explanation panel */
 .study-explanation-panel {
-  background: #1F2937 !important; /* Darker, more comfortable background */
-  border: 1px solid #374151 !important;
+  background: hsl(var(--study-panel-muted)) !important;
+  border: 1px solid hsl(var(--border)) !important;
 }
 
 .study-theme .study-card {
-  background: #1e293b; /* card/panel */
-  border: 1px solid #334155;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
 }
 
 .study-theme .study-divider {
-  border-color: #334155;
+  border-color: hsl(var(--border));
 }
 
 .study-theme .study-text-secondary {
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
 }
 
 .study-theme .study-text-muted {
-  color: #6b7280;
+  color: hsl(var(--muted-foreground) / 0.75);
 }
 
 .study-theme .study-accent {
-  color: #38bdf8;
+  color: hsl(var(--primary));
 }
 
 .study-theme .study-btn {
-  background: #38bdf8;
-  color: #0f172a;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 .study-theme .study-btn:hover {
-  background: #0ea5e9;
+  filter: brightness(1.05);
 }
 
-/* ChatGPT-like chat message styles for eye comfort */
 .study-ai-message {
-  background: #343541 !important; /* ChatGPT AI message background */
-  color: #D1D5DB !important; /* Soft, comfortable text color */
-  border: none !important;
-  line-height: 1.75 !important; /* Increased line height for readability */
-  font-size: 15px !important; /* Comfortable reading size */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-}
-
-.study-ai-message .markdown-content {
-  color: #D1D5DB !important;
-}
-
-.study-ai-message .markdown-content p {
-  color: #D1D5DB !important;
-  margin-bottom: 0.875rem;
-}
-
-.study-ai-message .markdown-content strong {
-  color: #ECECF1 !important;
+  background: hsl(var(--chat-ai)) !important;
+  color: hsl(var(--chat-ai-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  line-height: 1.75 !important;
+  font-size: 15px !important;
 }
 
 .study-user-message {
-  background: #10A37F !important; /* ChatGPT-like user message green */
-  color: #FFFFFF !important; /* Pure white for contrast */
-  border: none !important;
+  background: hsl(var(--chat-user)) !important;
+  color: hsl(var(--chat-user-foreground)) !important;
+  border: 1px solid hsl(var(--chat-user)) !important;
   line-height: 1.75 !important;
   font-size: 15px !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-  font-weight: 400;
+  font-weight: 500;
 }
 
-/* Scrollbar styling for better aesthetics */
+/* Scrollbar styling */
 .study-theme ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 .study-theme ::-webkit-scrollbar-track {
-  background: #1F2937;
-  border-radius: 4px;
+  background: hsl(var(--background));
 }
 
 .study-theme ::-webkit-scrollbar-thumb {
-  background: #4B5563;
-  border-radius: 4px;
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 999px;
 }
 
 .study-theme ::-webkit-scrollbar-thumb:hover {
-  background: #6B7280;
+  background: hsl(var(--muted-foreground) / 0.5);
 }
-
-/* Better spacing for chat messages */
-.study-ai-message,
-.study-user-message {
-  padding: 16px 20px !important;
-  margin-bottom: 4px;
-}
-
-
 

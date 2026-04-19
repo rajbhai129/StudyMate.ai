@@ -5,6 +5,8 @@ import uuid
 import tempfile
 import json
 import re
+from datetime import datetime, timezone
+from datetime import timedelta
 import fitz  # PyMuPDF
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -18,8 +20,16 @@ import cloudinary.uploader
 from google import genai
 from pdf_pipeline.parser import PDFParser
 from flask_bcrypt import Bcrypt
+
 from flask_jwt_extended import JWTManager
 from bson.errors import InvalidId
+
+from flask_jwt_extended import (
+    JWTManager,
+    get_jwt_identity,
+    jwt_required,
+    verify_jwt_in_request,
+)
 # --------------------------------------------------
 # Load ENV
 # --------------------------------------------------
@@ -38,6 +48,10 @@ CORS(
 
 # JWT Config
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-prod")
+app.config["JWT_HEADER_NAME"] = "Authorization"
+app.config["JWT_HEADER_TYPE"] = "Bearer"
+# Longer dev-friendly sessions; adjust for prod as needed.
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(days=7)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
@@ -84,6 +98,72 @@ gemini_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 GEMINI_MODEL = "gemini-2.5-flash"
 
 # --------------------------------------------------
+# Helpers
+# --------------------------------------------------
+def _strip_markdown_code_fences(text):
+    if not text:
+        return ""
+    text = text.strip()
+    # Remove opening fence like ``` or ```json
+    text = re.sub(r"^```[a-zA-Z0-9_-]*\s*", "", text)
+    # Remove closing fence
+    text = re.sub(r"\s*```$", "", text)
+    return text.strip()
+
+def _extract_first_json_block(text):
+    """
+    Best-effort extraction for model outputs that include extra text around JSON.
+    Tries to isolate the first {...} or [...] block.
+    """
+    if not text:
+        return ""
+    text = text.strip()
+    obj_start = text.find("{")
+    arr_start = text.find("[")
+
+    if obj_start == -1 and arr_start == -1:
+        return text
+
+    if obj_start == -1:
+        start = arr_start
+        end = text.rfind("]")
+    elif arr_start == -1:
+        start = obj_start
+        end = text.rfind("}")
+    else:
+        start = min(obj_start, arr_start)
+        end = text.rfind("}" if obj_start < arr_start else "]")
+
+    if end == -1 or end <= start:
+        return text[start:]
+    return text[start : end + 1].strip()
+
+def _utc_iso():
+    return datetime.now(timezone.utc).isoformat()
+
+def _get_optional_user_id():
+    try:
+        verify_jwt_in_request(optional=True)
+        return get_jwt_identity()
+    except Exception:
+        return None
+
+def _serialize_conversation(doc):
+    if not doc:
+        return None
+    return {
+        "id": str(doc.get("_id")),
+        "userId": doc.get("userId"),
+        "pdfId": str(doc.get("pdfId")) if doc.get("pdfId") else None,
+        "pdfFileName": doc.get("pdfFileName", ""),
+        "title": doc.get("title", ""),
+        "createdAt": doc.get("createdAt"),
+        "updatedAt": doc.get("updatedAt"),
+        "lastPageNo": doc.get("lastPageNo"),
+        "messages": doc.get("messages", []),
+    }
+
+# --------------------------------------------------
 # Prompt Builder
 # --------------------------------------------------
 def build_student_prompt(page_text, language):
@@ -126,11 +206,17 @@ def upload_pdf():
             resource_type="raw",
             folder="RagBot_PDFs"
         )
+        user_id = _get_optional_user_id()
         pdf_data = {
             "fileName": file.filename,
             "pdfUrl": upload_result["url"],
+            "ownerUserId": user_id,
+            "createdAt": _utc_iso(),
             "pages": [],
-            "chatHistory": []
+            "chatHistory": [],
+            # Student utilities (new docs will have these; old docs remain compatible)
+            "revisionPacks": [],
+            "doubtNotes": []
         }
         result = db.pdfs.insert_one(pdf_data)
         return jsonify({
@@ -458,10 +544,8 @@ Return ONLY valid JSON, no other text.
         quiz_text = response.text or "{}"
         
         # Try to parse JSON (Gemini might wrap it in markdown)
-        # Remove markdown code blocks if present
-        quiz_text = re.sub(r'```json\n?', '', quiz_text)
-        quiz_text = re.sub(r'```\n?', '', quiz_text)
-        quiz_text = quiz_text.strip()
+        quiz_text = _strip_markdown_code_fences(quiz_text)
+        quiz_text = _extract_first_json_block(quiz_text)
         
         try:
             quiz_data = json.loads(quiz_text)
@@ -474,10 +558,313 @@ Return ONLY valid JSON, no other text.
         print("generate_quiz error:", e)
         return jsonify({"error": str(e)}), 500
 
+# ---------------- REVISION PACK ----------------
+@app.route("/generate-revision-pack", methods=["POST"])
+def generate_revision_pack():
+    """
+    Generates a compact revision pack from selected pages and stores it on the PDF:
+    - notes (Markdown)
+    - key terms
+    - flashcards (active recall)
+    - exam-style questions
+    """
+    try:
+        data = request.json or {}
+        pdf_id = data.get("pdf_id")
+        page_numbers = data.get("page_numbers", [])
+        language = data.get("language", "english")
+        title = (data.get("title") or "").strip()
+
+        if not pdf_id:
+            return jsonify({"error": "pdf_id is required"}), 400
+        if not page_numbers:
+            return jsonify({"error": "Please select at least one page"}), 400
+
+        pdf = db.pdfs.find_one({"_id": ObjectId(pdf_id)})
+        if not pdf:
+            return jsonify({"error": "PDF not found"}), 404
+
+        # Collect text from selected pages (must be parsed already)
+        selected_pages_text = ""
+        for page_no in page_numbers:
+            page = next((p for p in pdf.get("pages", []) if p["pageNumber"] == page_no), None)
+            if page and page.get("text"):
+                selected_pages_text += f"\n\n--- PAGE {page_no} ---\n{page['text']}\n"
+
+        if not selected_pages_text:
+            return jsonify({"error": "Selected pages not parsed yet"}), 400
+
+        pack_id = uuid.uuid4().hex
+        created_at = _utc_iso()
+        effective_title = title or f"Revision Pack (Pages {', '.join(map(str, page_numbers))})"
+
+        prompt = f"""
+LANGUAGE: {language} (hinglish = Hindi+English mix, hindi = pure Hindi, english = English)
+
+TASK: Create a compact "Revision Pack" for a student from the content below.
+Make it highly exam-oriented and easy to revise quickly.
+
+CONTENT:
+{selected_pages_text}
+
+REQUIREMENTS:
+- Keep it short, but not vague (prioritize what is most likely asked in exams)
+- Use simple language in the requested language ({language})
+- Prefer active recall: many short Q/A flashcards
+- Avoid hallucinations: only use info that appears in CONTENT
+
+FORMAT (JSON):
+{{
+  "title": "Short title for this revision pack",
+  "notes_markdown": "Markdown notes with headings and bullets",
+  "key_terms": [
+    {{ "term": "Term", "meaning": "Meaning" }}
+  ],
+  "flashcards": [
+    {{ "front": "Question", "back": "Answer" }}
+  ],
+  "exam_questions": [
+    {{ "question": "Exam style question", "answer_outline": "Bullet outline answer" }}
+  ],
+  "common_mistakes": [
+    "Common mistake 1"
+  ]
+}}
+
+Return ONLY valid JSON, no other text.
+"""
+
+        response = gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt
+        )
+
+        pack_text = _strip_markdown_code_fences(response.text or "{}")
+        pack_text = _extract_first_json_block(pack_text)
+        try:
+            pack_data = json.loads(pack_text)
+        except Exception:
+            pack_data = {"error": "Failed to parse revision pack", "raw_response": pack_text}
+
+        saved_pack = {
+            "packId": pack_id,
+            "createdAt": created_at,
+            "language": language,
+            "pageNumbers": page_numbers,
+            "title": pack_data.get("title", effective_title) if isinstance(pack_data, dict) else effective_title,
+            "pack": pack_data,
+        }
+
+        db.pdfs.update_one(
+            {"_id": ObjectId(pdf_id)},
+            {"$push": {"revisionPacks": saved_pack}}
+        )
+
+        return jsonify({"revision_pack": saved_pack}), 200
+    except Exception as e:
+        print("generate_revision_pack error:", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/pdf/<pdf_id>/revision-packs", methods=["GET"])
+def list_revision_packs(pdf_id):
+    try:
+        pdf = db.pdfs.find_one({"_id": ObjectId(pdf_id)})
+        if not pdf:
+            return jsonify({"error": "PDF not found"}), 404
+        packs = list(reversed(pdf.get("revisionPacks", [])))
+        return jsonify({"revision_packs": packs}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# --------------------------------------------------
+# Conversations (Saved chats)
+# --------------------------------------------------
+@app.route("/api/conversations", methods=["GET"])
+@jwt_required()
+def list_conversations():
+    user_id = get_jwt_identity()
+    try:
+        docs = list(
+            db.conversations.find({"userId": user_id}).sort("updatedAt", -1).limit(200)
+        )
+        return jsonify({"conversations": [_serialize_conversation(d) for d in docs]}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/conversations", methods=["POST"])
+@jwt_required()
+def create_conversation():
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    pdf_id = data.get("pdf_id")
+    page_no = data.get("page_no")
+    title = (data.get("title") or "").strip()
+
+    if not pdf_id:
+        return jsonify({"error": "pdf_id is required"}), 400
+
+    try:
+        pdf = db.pdfs.find_one({"_id": ObjectId(pdf_id)})
+    except Exception:
+        return jsonify({"error": "Invalid pdf_id"}), 400
+
+    if not pdf:
+        return jsonify({"error": "PDF not found"}), 404
+
+    owner = pdf.get("ownerUserId")
+    if owner and owner != user_id:
+        return jsonify({"error": "Not allowed"}), 403
+
+    # Migration-friendly: claim older PDFs without owner
+    if not owner:
+        db.pdfs.update_one({"_id": pdf["_id"]}, {"$set": {"ownerUserId": user_id}})
+
+    now = _utc_iso()
+    effective_title = title or f"{pdf.get('fileName', 'PDF')}"
+    if page_no is not None:
+        try:
+            effective_title = f"{effective_title} • Page {int(page_no)}"
+        except Exception:
+            pass
+
+    conversation = {
+        "userId": user_id,
+        "pdfId": pdf["_id"],
+        "pdfFileName": pdf.get("fileName", ""),
+        "title": effective_title,
+        "createdAt": now,
+        "updatedAt": now,
+        "lastPageNo": int(page_no) if str(page_no).isdigit() else None,
+        "messages": [],
+    }
+
+    try:
+        result = db.conversations.insert_one(conversation)
+        conversation["_id"] = result.inserted_id
+        return jsonify({"conversation": _serialize_conversation(conversation)}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/conversations/<conversation_id>", methods=["GET"])
+@jwt_required()
+def get_conversation(conversation_id):
+    user_id = get_jwt_identity()
+    try:
+        doc = db.conversations.find_one(
+            {"_id": ObjectId(conversation_id), "userId": user_id}
+        )
+    except Exception:
+        return jsonify({"error": "Invalid conversation id"}), 400
+
+    if not doc:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    return jsonify({"conversation": _serialize_conversation(doc)}), 200
+
+@app.route("/api/conversations/<conversation_id>/messages", methods=["POST"])
+@jwt_required()
+def add_conversation_message(conversation_id):
+    user_id = get_jwt_identity()
+    data = request.json or {}
+    query = (data.get("query") or "").strip()
+    language = data.get("language", "english")
+
+    try:
+        page_no = int(data.get("page_no"))
+    except Exception:
+        page_no = None
+
+    if not query:
+        return jsonify({"error": "query is required"}), 400
+    if not page_no or page_no <= 0:
+        return jsonify({"error": "page_no is required"}), 400
+
+    try:
+        conv = db.conversations.find_one(
+            {"_id": ObjectId(conversation_id), "userId": user_id}
+        )
+    except Exception:
+        return jsonify({"error": "Invalid conversation id"}), 400
+
+    if not conv:
+        return jsonify({"error": "Conversation not found"}), 404
+
+    pdf = db.pdfs.find_one({"_id": conv.get("pdfId")})
+    if not pdf:
+        return jsonify({"error": "PDF not found"}), 404
+
+    owner = pdf.get("ownerUserId")
+    if owner and owner != user_id:
+        return jsonify({"error": "Not allowed"}), 403
+
+    page = next((p for p in pdf.get("pages", []) if p["pageNumber"] == page_no), None)
+    if not page:
+        return jsonify({"error": "Page not parsed yet"}), 400
+
+    recent = (conv.get("messages") or [])[-10:]
+    history_text = ""
+    for msg in recent:
+        role = "STUDENT" if msg.get("role") == "user" else "AI_TEACHER"
+        history_text += f"\n<{role}>\n{msg.get('text', '')}\n</{role}>\n"
+
+    prompt = f"""
+LANGUAGE: {language} (hinglish = Hindi+English mix, hindi = pure Hindi, english = English)
+<PAGE_CONTEXT>
+Page {page_no}
+{page.get('text', '')}
+</PAGE_CONTEXT>
+<PREVIOUS_CONVERSATION>
+{history_text}
+</PREVIOUS_CONVERSATION>
+<CURRENT_DOUBT>
+{query}
+</CURRENT_DOUBT>
+Answer clearly like a teacher in the requested language. Use Markdown formatting:
+- Use ## for main topics, ### for subtopics
+- Use **bold** for important terms
+- Use bullet points (-) and numbered lists
+- Make it well-structured and organized
+"""
+
+    response = gemini_client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=prompt
+    )
+    answer = response.text or "Unable to generate answer. Please try again."
+
+    now = _utc_iso()
+    new_entries = [
+        {"role": "user", "text": query, "pageNo": page_no, "createdAt": now},
+        {"role": "model", "text": answer, "pageNo": page_no, "createdAt": now},
+    ]
+
+    try:
+        db.conversations.update_one(
+            {"_id": conv["_id"], "userId": user_id},
+            {
+                "$push": {"messages": {"$each": new_entries}},
+                "$set": {"updatedAt": now, "lastPageNo": page_no},
+            },
+        )
+    except Exception as e:
+        return jsonify({"error": f"Failed to save message: {e}"}), 500
+
+    return jsonify({"answer": answer}), 200
+
+@app.route("/api/me", methods=["GET"])
+@jwt_required()
+def me():
+    user_id = get_jwt_identity()
+    return jsonify({"userId": user_id}), 200
+
 # --------------------------------------------------
 # Run App
 # --------------------------------------------------
 if __name__ == "__main__":
+   
     port = int(os.environ.get("PORT", 5000))
     print(f"🚀 Running on port {port}")
     app.run(host="0.0.0.0", port=port)
+
+    app.run(port=5000, debug=True)
+
